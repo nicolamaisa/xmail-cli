@@ -3,6 +3,11 @@ services:
     image: alpine
     container_name: x-api-test
     command: sleep infinity
+    healthcheck:
+      test: ["CMD", "echo", "API is healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   x-db:
     image: alpine

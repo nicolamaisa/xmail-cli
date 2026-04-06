@@ -8,7 +8,7 @@ import { createDashboard } from './ui/dashboard.js';
 import { layoutDashboard } from './lib/layout.js';
 import { createLogStore } from './lib/log-store.js';
 import { createPromptStore } from './lib/prompt-store.js';
-import { buildStatusPanelLines } from './lib/status-panel.js';
+import { fetchStatusPanelState, renderStatusPanelLines } from './lib/status-panel.js';
 import { getCommandSuggestions } from './lib/suggestions.js';
 import { refreshDashInputUI, refreshSplashInputUI } from './lib/refresh.js';
 
@@ -72,8 +72,24 @@ const prompts = createPromptStore(logs, {
 
 let statusRefreshInFlight = false;
 let lastStatusPanelContent = '';
+let statusPulseFrame = 0;
+/** @type {Awaited<ReturnType<typeof fetchStatusPanelState>> | null} */
+let latestStatusState = null;
 
-async function refreshStatusPanel() {
+function renderStatusPanel() {
+    if (!latestStatusState) {
+        return;
+    }
+
+    const nextContent = renderStatusPanelLines(latestStatusState, statusPulseFrame).join('\n');
+    if (nextContent !== lastStatusPanelContent) {
+        lastStatusPanelContent = nextContent;
+        dashboard.statusPanel.setContent(nextContent);
+        screen.render();
+    }
+}
+
+async function refreshStatusPanelData() {
     if (statusRefreshInFlight) {
         return;
     }
@@ -81,12 +97,8 @@ async function refreshStatusPanel() {
     statusRefreshInFlight = true;
 
     try {
-        const nextContent = (await buildStatusPanelLines()).join('\n');
-        if (nextContent !== lastStatusPanelContent) {
-            lastStatusPanelContent = nextContent;
-            dashboard.statusPanel.setContent(nextContent);
-            screen.render();
-        }
+        latestStatusState = await fetchStatusPanelState();
+        renderStatusPanel();
     } finally {
         statusRefreshInFlight = false;
     }
@@ -242,7 +254,7 @@ screen.on('resize', () => {
     if (dashboard.dashPage.visible) {
         layoutDashboard(dashboard, screen);
         refreshDashInputUI(dashUi, colors);
-        void refreshStatusPanel();
+        renderStatusPanel();
     } else {
         refreshSplashInputUI(splashUi, colors);
     }
@@ -252,9 +264,13 @@ logs.logText(
     `${chalk.hex(colors.logo)('▶')} Terminale pronto. Digita ${chalk.cyan('/frontend')} o ${chalk.cyan('/help')}`
 );
 logs.logText(`${chalk.hex(colors.logo)('▶')} Sistema pronto. ${chalk.dim('Ctrl+C per uscire')}`);
-void refreshStatusPanel();
+void refreshStatusPanelData();
 setInterval(() => {
-    void refreshStatusPanel();
+    statusPulseFrame = (statusPulseFrame + 1) % 2;
+    renderStatusPanel();
+}, 700);
+setInterval(() => {
+    void refreshStatusPanelData();
 }, 5000);
 
 splash.inputSplashBar.focus();
