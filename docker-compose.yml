@@ -1,0 +1,15 @@
+services:
+  x-api:
+    image: alpine
+    container_name: x-api-test
+    command: sleep infinity
+
+  x-db:
+    image: alpine
+    container_name: x-db-test
+    command: sleep infinity
+
+  x-auth:
+    image: alpine
+    container_name: x-auth-test
+    command: sleep infinity

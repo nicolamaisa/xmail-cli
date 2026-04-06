@@ -1,0 +1,5 @@
+# .gitignore for xmail project
+.env
+node_modules
+dist
+

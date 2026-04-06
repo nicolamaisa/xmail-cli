@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "checkJs": true,
+    "allowJs": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "types": ["node"],
+    "skipLibCheck": true
+  },
+  "include": [
+    "index.mjs",
+    "commands/**/*.js",
+    "constants/**/*.js",
+    "lib/layout.js",
+    "lib/refresh.js",
+    "lib/suggestions.js",
+    "ui/**/*.js",
+    "global.d.ts",
+    "pm2-blessed.d.ts"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules",
+    "index2.mjs",
+    "index3.mjs",
+    "lib/fix-blessed.cjs"
+  ]
+}
