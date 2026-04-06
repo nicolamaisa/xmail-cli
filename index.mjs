@@ -6,6 +6,9 @@ import { colors } from './constants/colors.js';
 import { createSplash } from './ui/splash.js';
 import { createDashboard } from './ui/dashboard.js';
 import { layoutDashboard } from './lib/layout.js';
+import { createLogStore } from './lib/log-store.js';
+import { createPromptStore } from './lib/prompt-store.js';
+import { buildStatusPanelLines } from './lib/status-panel.js';
 import { getCommandSuggestions } from './lib/suggestions.js';
 import { refreshDashInputUI, refreshSplashInputUI } from './lib/refresh.js';
 
@@ -47,6 +50,48 @@ const dashUi = {
     screen
 };
 
+const logs = createLogStore(dashboard.logArea, screen);
+let promptMode = false;
+const prompts = createPromptStore(logs, {
+    onOpen() {
+        promptMode = true;
+        dashboard.dashInput.clearValue();
+        dashboard.logArea.focus();
+        dashboard.hintDashText.setContent('Prompt attivo: usa Enter, Esc e frecce');
+        dashboard.dashInput.style.fg = '#666666';
+        refreshDashInputUI(dashUi, colors);
+    },
+    onClose() {
+        promptMode = false;
+        dashboard.dashInput.focus();
+        dashboard.hintDashText.setContent('Digita un comando... ');
+        dashboard.dashInput.style.fg = 'white';
+        refreshDashInputUI(dashUi, colors);
+    }
+});
+
+let statusRefreshInFlight = false;
+let lastStatusPanelContent = '';
+
+async function refreshStatusPanel() {
+    if (statusRefreshInFlight) {
+        return;
+    }
+
+    statusRefreshInFlight = true;
+
+    try {
+        const nextContent = (await buildStatusPanelLines()).join('\n');
+        if (nextContent !== lastStatusPanelContent) {
+            lastStatusPanelContent = nextContent;
+            dashboard.statusPanel.setContent(nextContent);
+            screen.render();
+        }
+    } finally {
+        statusRefreshInFlight = false;
+    }
+}
+
 function switchToDashboard() {
     splash.splashPage.hide();
     dashboard.dashPage.show();
@@ -59,6 +104,10 @@ function switchToDashboard() {
 
 /** @param {string} value */
 function runDashboardCommand(value) {
+    if (promptMode) {
+        return;
+    }
+
     const cmd = value.trim().toLowerCase();
 
     /** @type {AppContext} */
@@ -66,9 +115,11 @@ function runDashboardCommand(value) {
         screen,
         logArea: dashboard.logArea,
         dashInput: dashboard.dashInput,
+        logs,
+        prompts,
         state: {},
         /** @param {string} message */
-        log: (message) => dashboard.logArea.log(message),
+        log: (message) => logs.logText(message),
         quit: () => process.exit(0)
     };
 
@@ -76,21 +127,25 @@ function runDashboardCommand(value) {
     const handler = commandRegistry[cmd];
 
     if (handler) {
-        handler(ctx);
+        Promise.resolve(handler(ctx)).catch((error) => {
+            const message = error instanceof Error ? error.message : String(error);
+            logs.logText(`${chalk.red('✖')} ${message}`);
+        });
     } else if (cmd !== '') {
-        dashboard.logArea.log(`${chalk.red('✖')} Comando non riconosciuto: ${cmd}`);
+        logs.logText(`${chalk.red('✖')} Comando non riconosciuto: ${cmd}`);
     }
 
     dashboard.dashInput.clearValue();
-    dashboard.dashInput.focus();
+    if (!promptMode) {
+        dashboard.dashInput.focus();
+    }
     refreshDashInputUI(dashUi, colors);
     screen.render();
 }
 
 /** @returns {void} */
 function clearDashboardLog() {
-    dashboard.logArea.setContent(`${chalk.hex(colors.logo)('▶')} Console pulita.`);
-    screen.render();
+    logs.clear(chalk.hex(colors.logo)('▶') + ' Console pulita.');
 }
 
 /** @param {any} widget @param {() => void} refresh */
@@ -129,7 +184,19 @@ splash.inputSplashBar.on('submit', /** @param {string} value */ (value) => {
 
 dashboard.dashInput.on('submit', runDashboardCommand);
 
+dashboard.dashInput.on('keypress', () => {
+    if (promptMode) {
+        dashboard.dashInput.clearValue();
+        dashboard.logArea.focus();
+        screen.render();
+    }
+});
+
 dashboard.dashInput.key(['tab'], () => {
+    if (promptMode) {
+        return false;
+    }
+
     const value = dashboard.dashInput.getValue() || '';
     const suggestions = getCommandSuggestions(value);
 
@@ -146,24 +213,49 @@ dashboard.dashInput.key(['tab'], () => {
 const quit = () => process.exit(0);
 
 dashboard.dashInput.key(['C-c'], quit);
-dashboard.dashInput.key(['C-l'], clearDashboardLog);
+dashboard.dashInput.key(['C-l'], () => {
+    if (!promptMode) {
+        clearDashboardLog();
+    }
+});
 
 screen.key(['C-c'], quit);
-screen.key(['C-l'], clearDashboardLog);
+screen.key(['C-l'], () => {
+    if (!promptMode) {
+        clearDashboardLog();
+    }
+});
+screen.on('keypress', /** @param {string} ch @param {any} key */ (ch, key) => {
+    if (!prompts.isActive()) {
+        return;
+    }
+
+    const handled = prompts.handleKeypress(ch, key);
+    if (handled) {
+        dashboard.dashInput.clearValue();
+        refreshDashInputUI(dashUi, colors);
+        screen.render();
+    }
+});
 
 screen.on('resize', () => {
     if (dashboard.dashPage.visible) {
         layoutDashboard(dashboard, screen);
         refreshDashInputUI(dashUi, colors);
+        void refreshStatusPanel();
     } else {
         refreshSplashInputUI(splashUi, colors);
     }
 });
 
-dashboard.logArea.log(
+logs.logText(
     `${chalk.hex(colors.logo)('▶')} Terminale pronto. Digita ${chalk.cyan('/frontend')} o ${chalk.cyan('/help')}`
 );
-dashboard.logArea.log(`${chalk.hex(colors.logo)('▶')} Sistema pronto. ${chalk.dim('Ctrl+C per uscire')}`);
+logs.logText(`${chalk.hex(colors.logo)('▶')} Sistema pronto. ${chalk.dim('Ctrl+C per uscire')}`);
+void refreshStatusPanel();
+setInterval(() => {
+    void refreshStatusPanel();
+}, 5000);
 
 splash.inputSplashBar.focus();
 screen.render();

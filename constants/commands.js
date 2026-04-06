@@ -5,5 +5,7 @@ export const COMMANDS = [
     { id: '/help', description: 'Mostra i comandi disponibili' },
     { id: '/frontend', description: 'Avvia il frontend' },
     { id: '/clear', description: 'Pulisci lo schermo' },
-    { id: '/test', description: 'Esegui test' }
+    { id: '/test', description: 'Esegui test' },
+    { id: '/wizard', description: 'Avvia la procedura guidata di configurazione' },
+    { id: '/export-log', description: 'Esporta il log corrente in un file di supporto' }
 ];

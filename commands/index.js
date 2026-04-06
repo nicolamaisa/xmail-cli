@@ -3,6 +3,8 @@ import { runClear } from './clear.js';
 import { runTest } from './test.js';
 import { runFrontend } from './frontend.js';
 import { runExit } from './exit.js';
+import { runWizard } from './wizard.js';
+import { runExportLog } from './export-log.js';
 
 /** @type {Record<string, CommandHandler>} */
 export const commandRegistry = {
@@ -10,6 +12,8 @@ export const commandRegistry = {
     '/clear': runClear,
     '/test': runTest,
     '/frontend': runFrontend,
+    '/wizard': runWizard,
+    '/export-log': runExportLog,
     '/exit': runExit,
     '/quit': runExit,
 };

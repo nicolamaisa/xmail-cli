@@ -123,10 +123,36 @@ export function createDashboard(screen, colors) {
         top: 0,
         bottom: 0,
         right: 0,
-        width: '20%',
+        width: '28%',
+
+        tags: true,
         style: {
-            bg: '#444'
+            fg: colors.testo,
+            bg: '#111111',
+
         }
+    });
+
+    const statusPanel = blessed.box({
+        parent: sideInfo,
+        top: 0,
+        left: 0,
+        width: '100%-2',
+        height: '100%-2',
+        tags: true,
+        scrollable: true,
+        alwaysScroll: true,
+        padding: { top: 1, right: 1, bottom: 1, left: 1 },
+        style: {
+            fg: colors.testo,
+            bg: '#111111'
+        },
+        content: [
+            '{red-fg}XMail runtime{/red-fg}',
+            '',
+            '{gray-fg}Containers{/gray-fg}',
+            '  waiting for docker data...'
+        ].join('\n')
     });
 
     const bottomInfo = blessed.box({
@@ -158,7 +184,7 @@ export function createDashboard(screen, colors) {
         height: '100%-17', // Spazio per header (10) e input (3)
         tags: true,
         keys: true,
-        mouse: true,
+        mouse: false,
         padding: { top: 1, right: 1, bottom: 1, left: 1 },
         scrollable: true,
         style: {
@@ -231,6 +257,7 @@ export function createDashboard(screen, colors) {
         logo,
         header,
         sideInfo,
+        statusPanel,
         inputContainer,
         dashInput,
         hintDashText,
