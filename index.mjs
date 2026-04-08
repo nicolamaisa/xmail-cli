@@ -9,8 +9,33 @@ import { layoutDashboard } from './lib/layout.js';
 import { createLogStore } from './lib/log-store.js';
 import { createPromptStore } from './lib/prompt-store.js';
 import { fetchStatusPanelState, renderStatusPanelLines } from './lib/status-panel.js';
-import { getCommandSuggestions } from './lib/suggestions.js';
+import { getCommandSplashSuggestions, getCommandSuggestions } from './lib/suggestions.js';
 import { refreshDashInputUI, refreshSplashInputUI } from './lib/refresh.js';
+
+let textboxEnterPatchApplied = false;
+
+function patchBlessedTextboxEnter() {
+    if (textboxEnterPatchApplied || !blessed.textbox?.prototype) {
+        return;
+    }
+
+    const prototype = blessed.textbox.prototype;
+    const originalListener = prototype._listener;
+
+    prototype._listener = /** @param {string} ch @param {{ name?: string } | undefined} key */ function patchedTextboxListener(ch, key) {
+        if (key?.name === 'enter' && typeof this._done !== 'function') {
+            this.emit('submit', this.value);
+            this.emit('action', this.value);
+            return;
+        }
+
+        return originalListener.call(this, ch, key);
+    };
+
+    textboxEnterPatchApplied = true;
+}
+
+patchBlessedTextboxEnter();
 
 /** @returns {boolean} */
 function checkProjectStatus() {
@@ -37,6 +62,21 @@ const screen = blessed.screen({
     }
 });
 
+/** @returns {AppContext} */
+function createCommandContext() {
+    return {
+        screen,
+        logArea: dashboard.logArea,
+        dashInput: dashboard.dashInput,
+        logs,
+        prompts,
+        state: {},
+        /** @param {string} message */
+        log: (message) => logs.logText(message),
+        quit: () => process.exit(0)
+    };
+}
+
 const splash = createSplash(screen, colors, isInstalled);
 const dashboard = createDashboard(screen, colors);
 
@@ -52,9 +92,11 @@ const dashUi = {
 
 const logs = createLogStore(dashboard.logArea, screen);
 let promptMode = false;
+let commandInputLocked = false;
 const prompts = createPromptStore(logs, {
     onOpen() {
         promptMode = true;
+        commandInputLocked = true;
         dashboard.dashInput.clearValue();
         dashboard.logArea.focus();
         dashboard.hintDashText.setContent('Prompt attivo: usa Enter, Esc e frecce');
@@ -63,6 +105,7 @@ const prompts = createPromptStore(logs, {
     },
     onClose() {
         promptMode = false;
+        commandInputLocked = false;
         dashboard.dashInput.focus();
         dashboard.hintDashText.setContent('Digita un comando... ');
         dashboard.dashInput.style.fg = 'white';
@@ -104,42 +147,31 @@ async function refreshStatusPanelData() {
     }
 }
 
-function switchToDashboard() {
+/**
+ * @param {{ focusInput?: boolean }} [options]
+ */
+function switchToDashboard(options = {}) {
+    const { focusInput = true } = options;
     splash.splashPage.hide();
     dashboard.dashPage.show();
     screen.render();
     layoutDashboard(dashboard, screen);
-    dashboard.dashInput.focus();
+    if (focusInput && !commandInputLocked) {
+        dashboard.dashInput.focus();
+    } else {
+        dashboard.logArea.focus();
+    }
     refreshDashInputUI(dashUi, colors);
     screen.render();
 }
 
-/** @param {string} value */
-function runDashboardCommand(value) {
-    if (promptMode) {
-        return;
-    }
-
-    const cmd = value.trim().toLowerCase();
-
-    /** @type {AppContext} */
-    const ctx = {
-        screen,
-        logArea: dashboard.logArea,
-        dashInput: dashboard.dashInput,
-        logs,
-        prompts,
-        state: {},
-        /** @param {string} message */
-        log: (message) => logs.logText(message),
-        quit: () => process.exit(0)
-    };
-
+/** @param {string} cmd */
+function dispatchCommand(cmd) {
     /** @type {CommandHandler | undefined} */
     const handler = commandRegistry[cmd];
 
     if (handler) {
-        Promise.resolve(handler(ctx)).catch((error) => {
+        return Promise.resolve(handler(createCommandContext())).catch((error) => {
             const message = error instanceof Error ? error.message : String(error);
             logs.logText(`${chalk.red('✖')} ${message}`);
         });
@@ -147,10 +179,27 @@ function runDashboardCommand(value) {
         logs.logText(`${chalk.red('✖')} Comando non riconosciuto: ${cmd}`);
     }
 
-    dashboard.dashInput.clearValue();
-    if (!promptMode) {
-        dashboard.dashInput.focus();
+    return Promise.resolve();
+}
+
+/** @param {string} value */
+function runDashboardCommand(value) {
+    if (promptMode || commandInputLocked) {
+        return;
     }
+
+    const cmd = value.trim().toLowerCase();
+    void dispatchCommand(cmd).finally(() => {
+        if (!promptMode && !commandInputLocked) {
+            dashboard.dashInput.focus();
+        } else {
+            dashboard.logArea.focus();
+        }
+        refreshDashInputUI(dashUi, colors);
+        screen.render();
+    });
+
+    dashboard.dashInput.clearValue();
     refreshDashInputUI(dashUi, colors);
     screen.render();
 }
@@ -182,9 +231,37 @@ splash.inputSplashBar.on('submit', /** @param {string} value */ (value) => {
         process.exit(0);
     }
 
-    if (cmd === '/init' || (cmd === '' && isInstalled)) {
+    if (cmd === '') {
+        if (isInstalled) {
+            splash.inputSplashBar.clearValue();
+            switchToDashboard();
+        }
+        return;
+    }
+
+    if (cmd === '/init') {
+        splash.inputSplashBar.clearValue();
+        commandInputLocked = true;
+        dashboard.hintDashText.setContent('Bootstrap in avvio...');
+        dashboard.dashInput.style.fg = '#666666';
+        switchToDashboard({ focusInput: false });
+        void dispatchCommand('/init').finally(() => {
+            if (!promptMode) {
+                commandInputLocked = false;
+                dashboard.hintDashText.setContent('Digita un comando... ');
+                dashboard.dashInput.style.fg = 'white';
+                dashboard.dashInput.focus();
+                refreshDashInputUI(dashUi, colors);
+                screen.render();
+            }
+        });
+        return;
+    }
+
+    if (cmd === '/help') {
         splash.inputSplashBar.clearValue();
         switchToDashboard();
+        dispatchCommand('/help');
         return;
     }
 
@@ -194,18 +271,32 @@ splash.inputSplashBar.on('submit', /** @param {string} value */ (value) => {
     screen.render();
 });
 
+splash.inputSplashBar.key(['tab'], () => {
+    const value = splash.inputSplashBar.getValue() || '';
+    const suggestions = getCommandSplashSuggestions(value);
+
+    if (suggestions.length > 0) {
+        splash.inputSplashBar.setValue(suggestions[0].id);
+        refreshSplashInputUI(splashUi, colors);
+        screen.render();
+    }
+
+    return false;
+});
+
 dashboard.dashInput.on('submit', runDashboardCommand);
 
 dashboard.dashInput.on('keypress', () => {
-    if (promptMode) {
+    if (promptMode || commandInputLocked) {
         dashboard.dashInput.clearValue();
         dashboard.logArea.focus();
+        refreshDashInputUI(dashUi, colors);
         screen.render();
     }
 });
 
 dashboard.dashInput.key(['tab'], () => {
-    if (promptMode) {
+    if (promptMode || commandInputLocked) {
         return false;
     }
 
@@ -226,14 +317,14 @@ const quit = () => process.exit(0);
 
 dashboard.dashInput.key(['C-c'], quit);
 dashboard.dashInput.key(['C-l'], () => {
-    if (!promptMode) {
+    if (!promptMode && !commandInputLocked) {
         clearDashboardLog();
     }
 });
 
 screen.key(['C-c'], quit);
 screen.key(['C-l'], () => {
-    if (!promptMode) {
+    if (!promptMode && !commandInputLocked) {
         clearDashboardLog();
     }
 });
