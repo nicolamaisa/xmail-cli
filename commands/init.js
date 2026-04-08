@@ -78,7 +78,8 @@ export async function runInit(ctx) {
             id: 'publicUrl',
             label: 'Public base URL',
             placeholder: current.PUBLIC_URL || current.SITE_URL || 'http://localhost:8000',
-            value: current.PUBLIC_URL || current.SITE_URL || ''
+            value: current.PUBLIC_URL || current.SITE_URL || '',
+            required: true
         });
     }
 
@@ -88,7 +89,8 @@ export async function runInit(ctx) {
             id: 'postgresPassword',
             label: 'POSTGRES_PASSWORD',
             placeholder: 'xmail-postgres-password',
-            value: current.POSTGRES_PASSWORD || ''
+            value: current.POSTGRES_PASSWORD || '',
+            required: true
         });
     }
 
@@ -98,7 +100,19 @@ export async function runInit(ctx) {
             id: 'minioRootPassword',
             label: 'MINIO_ROOT_PASSWORD',
             placeholder: 'xmail-minio-password',
-            value: current.MINIO_ROOT_PASSWORD || ''
+            value: current.MINIO_ROOT_PASSWORD || '',
+            required: true
+        });
+    }
+
+    if (askAll || !current.RUSTFS_SECRET_KEY) {
+        configEntries.push({
+            type: 'password',
+            id: 'rustfsSecretKey',
+            label: 'RUSTFS_SECRET_KEY',
+            placeholder: 'xmail-rustfs-secret',
+            value: current.RUSTFS_SECRET_KEY || '',
+            required: true
         });
     }
 
@@ -108,7 +122,8 @@ export async function runInit(ctx) {
             id: 'basicPass',
             label: 'BASIC_PASS',
             placeholder: 'admin-password',
-            value: current.BASIC_PASS || ''
+            value: current.BASIC_PASS || '',
+            required: true
         });
     }
 
@@ -157,6 +172,7 @@ export async function runInit(ctx) {
         PUBLIC_AI_BASE_URL: `${publicUrl}/ai`,
         POSTGRES_PASSWORD: String(config.postgresPassword || current.POSTGRES_PASSWORD || ''),
         MINIO_ROOT_PASSWORD: String(config.minioRootPassword || current.MINIO_ROOT_PASSWORD || ''),
+        RUSTFS_SECRET_KEY: String(config.rustfsSecretKey || current.RUSTFS_SECRET_KEY || ''),
         BASIC_PASS: String(config.basicPass || current.BASIC_PASS || ''),
         JWT_SECRET: jwtKeys.JWT_SECRET,
         ANON_KEY: jwtKeys.ANON_KEY,
@@ -175,6 +191,7 @@ export async function runInit(ctx) {
                     `PUBLIC_URL: ${nextEnv.PUBLIC_URL}`,
                     `POSTGRES_PASSWORD: ${nextEnv.POSTGRES_PASSWORD ? 'set' : 'missing'}`,
                     `MINIO_ROOT_PASSWORD: ${nextEnv.MINIO_ROOT_PASSWORD ? 'set' : 'missing'}`,
+                    `RUSTFS_SECRET_KEY: ${nextEnv.RUSTFS_SECRET_KEY ? 'set' : 'missing'}`,
                     `BASIC_PASS: ${nextEnv.BASIC_PASS ? 'set' : 'missing'}`,
                     `JWT keys: ${current.JWT_SECRET && current.ANON_KEY && current.SERVICE_ROLE_KEY ? 'reuse existing' : 'generate new'}`,
                     `Options: ${bootstrapOptions.join(', ') || 'none'}`

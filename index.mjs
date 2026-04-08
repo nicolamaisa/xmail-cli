@@ -93,11 +93,21 @@ const dashUi = {
 const logs = createLogStore(dashboard.logArea, screen);
 let promptMode = false;
 let commandInputLocked = false;
+
+/** @param {any} widget */
+function stopTextboxInput(widget) {
+    if (typeof widget?._done === 'function') {
+        widget._done('stop');
+    }
+}
+
 const prompts = createPromptStore(logs, {
     onOpen() {
         promptMode = true;
         commandInputLocked = true;
+        stopTextboxInput(dashboard.dashInput);
         dashboard.dashInput.clearValue();
+        dashboard.dashInput.blur();
         dashboard.logArea.focus();
         dashboard.hintDashText.setContent('Prompt attivo: usa Enter, Esc e frecce');
         dashboard.dashInput.style.fg = '#666666';
@@ -106,9 +116,9 @@ const prompts = createPromptStore(logs, {
     onClose() {
         promptMode = false;
         commandInputLocked = false;
-        dashboard.dashInput.focus();
         dashboard.hintDashText.setContent('Digita un comando... ');
         dashboard.dashInput.style.fg = 'white';
+        focusDashboardInput();
         refreshDashInputUI(dashUi, colors);
     }
 });
@@ -118,6 +128,25 @@ let lastStatusPanelContent = '';
 let statusPulseFrame = 0;
 /** @type {Awaited<ReturnType<typeof fetchStatusPanelState>> | null} */
 let latestStatusState = null;
+
+function focusDashboardInput() {
+    if (promptMode || commandInputLocked) {
+        return;
+    }
+
+    stopTextboxInput(splash.inputSplashBar);
+    dashboard.dashInput.focus();
+    dashboard.dashInput.cursorVisible = true;
+    refreshDashInputUI(dashUi, colors);
+    screen.render();
+}
+
+function blurDashboardInput() {
+    dashboard.dashInput.blur();
+    dashboard.dashInput.cursorVisible = false;
+    refreshDashInputUI(dashUi, colors);
+    screen.render();
+}
 
 function renderStatusPanel() {
     if (!latestStatusState) {
@@ -152,12 +181,13 @@ async function refreshStatusPanelData() {
  */
 function switchToDashboard(options = {}) {
     const { focusInput = true } = options;
+    stopTextboxInput(splash.inputSplashBar);
     splash.splashPage.hide();
     dashboard.dashPage.show();
     screen.render();
     layoutDashboard(dashboard, screen);
     if (focusInput && !commandInputLocked) {
-        dashboard.dashInput.focus();
+        focusDashboardInput();
     } else {
         dashboard.logArea.focus();
     }
@@ -191,7 +221,7 @@ function runDashboardCommand(value) {
     const cmd = value.trim().toLowerCase();
     void dispatchCommand(cmd).finally(() => {
         if (!promptMode && !commandInputLocked) {
-            dashboard.dashInput.focus();
+            focusDashboardInput();
         } else {
             dashboard.logArea.focus();
         }
@@ -202,6 +232,65 @@ function runDashboardCommand(value) {
     dashboard.dashInput.clearValue();
     refreshDashInputUI(dashUi, colors);
     screen.render();
+}
+
+/** @param {string} ch @param {{ name?: string, ctrl?: boolean }} [key] */
+function handleDashboardInputKeypress(ch, key = {}) {
+    if (!dashboard.dashPage.visible || promptMode || commandInputLocked) {
+        return false;
+    }
+
+    if (!dashboard.dashInput.active) {
+        focusDashboardInput();
+    }
+
+    if (key.ctrl) {
+        return false;
+    }
+
+    if (key.name === 'enter' || key.name === 'return') {
+        dashboard.dashInput.cursorVisible = true;
+        runDashboardCommand(dashboard.dashInput.getValue() || '');
+        return true;
+    }
+
+    if (key.name === 'tab') {
+        const value = dashboard.dashInput.getValue() || '';
+        const suggestions = getCommandSuggestions(value);
+        if (suggestions.length > 0) {
+            dashboard.dashInput.setValue(suggestions[0].id);
+            dashboard.dashInput.cursorVisible = true;
+            refreshDashInputUI(dashUi, colors);
+            screen.render();
+        }
+        return true;
+    }
+
+    if (key.name === 'backspace') {
+        dashboard.dashInput.setValue((dashboard.dashInput.getValue() || '').slice(0, -1));
+        dashboard.dashInput.cursorVisible = true;
+        refreshDashInputUI(dashUi, colors);
+        screen.render();
+        return true;
+    }
+
+    if (key.name === 'escape') {
+        dashboard.dashInput.clearValue();
+        dashboard.dashInput.cursorVisible = true;
+        refreshDashInputUI(dashUi, colors);
+        screen.render();
+        return true;
+    }
+
+    if (ch && ch >= ' ' && !key.name?.startsWith('f')) {
+        dashboard.dashInput.setValue(`${dashboard.dashInput.getValue() || ''}${ch}`);
+        dashboard.dashInput.cursorVisible = true;
+        refreshDashInputUI(dashUi, colors);
+        screen.render();
+        return true;
+    }
+
+    return false;
 }
 
 /** @returns {void} */
@@ -222,7 +311,6 @@ refreshSplashInputUI(splashUi, colors);
 refreshDashInputUI(dashUi, colors);
 
 bindRefreshOnInput(splash.inputSplashBar, () => refreshSplashInputUI(splashUi, colors));
-bindRefreshOnInput(dashboard.dashInput, () => refreshDashInputUI(dashUi, colors));
 
 splash.inputSplashBar.on('submit', /** @param {string} value */ (value) => {
     const cmd = value.trim().toLowerCase();
@@ -250,7 +338,7 @@ splash.inputSplashBar.on('submit', /** @param {string} value */ (value) => {
                 commandInputLocked = false;
                 dashboard.hintDashText.setContent('Digita un comando... ');
                 dashboard.dashInput.style.fg = 'white';
-                dashboard.dashInput.focus();
+                focusDashboardInput();
                 refreshDashInputUI(dashUi, colors);
                 screen.render();
             }
@@ -284,42 +372,38 @@ splash.inputSplashBar.key(['tab'], () => {
     return false;
 });
 
-dashboard.dashInput.on('submit', runDashboardCommand);
-
-dashboard.dashInput.on('keypress', () => {
-    if (promptMode || commandInputLocked) {
-        dashboard.dashInput.clearValue();
-        dashboard.logArea.focus();
-        refreshDashInputUI(dashUi, colors);
-        screen.render();
-    }
-});
-
-dashboard.dashInput.key(['tab'], () => {
-    if (promptMode || commandInputLocked) {
-        return false;
-    }
-
-    const value = dashboard.dashInput.getValue() || '';
-    const suggestions = getCommandSuggestions(value);
-
-    if (suggestions.length > 0) {
-        dashboard.dashInput.setValue(suggestions[0].id);
-        refreshDashInputUI(dashUi, colors);
-        screen.render();
-    }
-
-    return false;
-});
-
 /** @returns {never} */
 const quit = () => process.exit(0);
 
-dashboard.dashInput.key(['C-c'], quit);
-dashboard.dashInput.key(['C-l'], () => {
-    if (!promptMode && !commandInputLocked) {
-        clearDashboardLog();
-    }
+dashboard.inputContainer.on('click', focusDashboardInput);
+dashboard.logArea.on('click', blurDashboardInput);
+dashboard.statusPanel.on('click', () => {
+    blurDashboardInput();
+    dashboard.statusPanel.focus();
+});
+dashboard.statusPanel.key(['up'], () => {
+    dashboard.statusPanel.scroll(-1);
+    screen.render();
+});
+dashboard.statusPanel.key(['down'], () => {
+    dashboard.statusPanel.scroll(1);
+    screen.render();
+});
+dashboard.statusPanel.key(['pageup'], () => {
+    dashboard.statusPanel.scroll(-10);
+    screen.render();
+});
+dashboard.statusPanel.key(['pagedown'], () => {
+    dashboard.statusPanel.scroll(10);
+    screen.render();
+});
+dashboard.statusPanel.key(['home'], () => {
+    dashboard.statusPanel.setScroll(0);
+    screen.render();
+});
+dashboard.statusPanel.key(['end'], () => {
+    dashboard.statusPanel.setScrollPerc(100);
+    screen.render();
 });
 
 screen.key(['C-c'], quit);
@@ -330,12 +414,14 @@ screen.key(['C-l'], () => {
 });
 screen.on('keypress', /** @param {string} ch @param {any} key */ (ch, key) => {
     if (!prompts.isActive()) {
+        handleDashboardInputKeypress(ch, key);
         return;
     }
 
     const handled = prompts.handleKeypress(ch, key);
     if (handled) {
         dashboard.dashInput.clearValue();
+        blurDashboardInput();
         refreshDashInputUI(dashUi, colors);
         screen.render();
     }
@@ -360,6 +446,14 @@ setInterval(() => {
     statusPulseFrame = (statusPulseFrame + 1) % 2;
     renderStatusPanel();
 }, 700);
+setInterval(() => {
+    if (!dashboard.dashPage.visible || !dashboard.dashInput.active || promptMode || commandInputLocked) {
+        return;
+    }
+
+    dashboard.dashInput.cursorVisible = !dashboard.dashInput.cursorVisible;
+    refreshDashInputUI(dashUi, colors);
+}, 530);
 setInterval(() => {
     void refreshStatusPanelData();
 }, 5000);

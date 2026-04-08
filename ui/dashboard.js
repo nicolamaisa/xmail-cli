@@ -85,26 +85,47 @@ export function createDashboard(screen, colors) {
         }
     });
 
-    const dashInput = blessed.textbox({
+    const dashInput = blessed.box({
         parent: inputContainer,
         top: 1,
         left: 3,
+        width: '100%-6',
         height: 1,
         name: 'input',
-        inputOnFocus: true,
+        tags: true,
         keys: true,
+        mouse: true,
         style: {
             fg: 'white',
             bg: '#111111'
         }
     });
+    dashInput.value = '';
+    dashInput.active = false;
+    dashInput.cursorVisible = true;
+    dashInput.getValue = () => dashInput.value || '';
+    dashInput.setValue = /** @param {string | null | undefined} value */ (value) => {
+        dashInput.value = value == null ? '' : String(value);
+    };
+    dashInput.clearValue = () => {
+        dashInput.value = '';
+    };
+    dashInput.focus = () => {
+        dashInput.active = true;
+        dashInput.cursorVisible = true;
+    };
+    dashInput.blur = () => {
+        dashInput.active = false;
+        dashInput.cursorVisible = false;
+    };
 
     const hintDashText = blessed.text({
         parent: inputContainer,
         top: 1,
         left: 3,
-        content: 'Digita un comando... ',
-        style: { fg: '#444444', bg: '#111111' } // Grigio molto spento
+        hidden: true,
+        content: '',
+        style: { fg: '#444444', bg: '#111111' }
     });
 
     const dashInputAccentLine = blessed.box({
@@ -140,12 +161,20 @@ export function createDashboard(screen, colors) {
         width: '100%-2',
         height: '100%-2',
         tags: true,
+        keys: true,
+        vi: true,
+        mouse: true,
         scrollable: true,
         alwaysScroll: true,
         padding: { top: 1, right: 1, bottom: 1, left: 1 },
         style: {
             fg: colors.testo,
             bg: '#111111'
+        },
+        scrollbar: {
+            ch: ' ',
+            track: { bg: '#222' },
+            style: { inverse: true }
         },
         content: [
             '{red-fg}XMail runtime{/red-fg}',
@@ -181,7 +210,7 @@ export function createDashboard(screen, colors) {
         top: 15,
         left: 0,
         width: '80%',
-        height: '100%-17', // Spazio per header (10) e input (3)
+        height: '100%-19', // Spazio per header (10) e input (3)
         tags: true,
         keys: true,
         mouse: false,
@@ -198,6 +227,26 @@ export function createDashboard(screen, colors) {
             style: { inverse: true }
         }
     });
+
+    const logAreaSuggestion = blessed.box({
+        parent: dashPage,
+        bottom: 2,
+        left: 1,
+        width: '100%-2',
+        height: 2,
+        tags: true,
+        style: { bg: '#111111', fg: '#C0C0C0' }
+    });
+    const separatorLine = blessed.line({
+        parent: logAreaSuggestion,
+        bottom: 1,
+        left: 0,
+        width: '100%',
+        orientation: 'horizontal',
+        style: { fg: '#999999', bg: '#111111' }
+    });
+
+
 
 
     const dashSuggestions = blessed.box({
@@ -263,6 +312,7 @@ export function createDashboard(screen, colors) {
         hintDashText,
         dashInputAccentLine,
         logArea,
+        logAreaSuggestion,
         bottomInfo,
         keyInfo,
         dashSuggestions,
