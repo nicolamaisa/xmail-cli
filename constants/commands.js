@@ -10,7 +10,7 @@ export const COMMANDS = [
     { id: '/restart', description: 'Riavvia la stack' },
     { id: '/migrate', description: 'Esegue solo le migrazioni del database' },
     { id: '/status', description: 'Mostra lo stato docker compose' },
-    { id: '/logs', description: 'Mostra gli ultimi log della stack' },
+    { id: '/logs', description: 'Mostra gli ultimi log della stack o di un singolo container' },
     { id: '/reset-db', description: 'Resetta i dati PostgreSQL locali' },
     { id: '/clear', description: 'Pulisci lo schermo' },
     { id: '/test', description: 'Esegui test' },

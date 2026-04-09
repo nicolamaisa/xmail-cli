@@ -195,17 +195,33 @@ function switchToDashboard(options = {}) {
     screen.render();
 }
 
-/** @param {string} cmd */
-function dispatchCommand(cmd) {
+/**
+ * @param {string} input
+ */
+function dispatchCommand(input) {
+    const trimmed = input.trim();
+
+    if (trimmed === '') {
+        return Promise.resolve();
+    }
+
+    const [cmd = '', ...args] = trimmed.split(/\s+/);
+
     /** @type {CommandHandler | undefined} */
     const handler = commandRegistry[cmd];
 
     if (handler) {
-        return Promise.resolve(handler(createCommandContext())).catch((error) => {
+        return Promise.resolve(
+            handler(createCommandContext(), {
+                raw: trimmed,
+                command: cmd,
+                args
+            })
+        ).catch((error) => {
             const message = error instanceof Error ? error.message : String(error);
             logs.logText(`${chalk.red('✖')} ${message}`);
         });
-    } else if (cmd !== '') {
+    } else {
         logs.logText(`${chalk.red('✖')} Comando non riconosciuto: ${cmd}`);
     }
 
@@ -218,8 +234,8 @@ function runDashboardCommand(value) {
         return;
     }
 
-    const cmd = value.trim().toLowerCase();
-    void dispatchCommand(cmd).finally(() => {
+    const input = value.trim().toLowerCase();
+    void dispatchCommand(input).finally(() => {
         if (!promptMode && !commandInputLocked) {
             focusDashboardInput();
         } else {

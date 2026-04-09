@@ -19,7 +19,16 @@ type AppContext = {
   quit: () => void;
 };
 
-type CommandHandler = (ctx: AppContext) => void | Promise<void>;
+type CommandInvocation = {
+  raw: string;
+  command: string;
+  args: string[];
+};
+
+type CommandHandler = (
+  ctx: AppContext,
+  invocation?: CommandInvocation,
+) => void | Promise<void>;
 
 type SplashUi = {
   inputSplashBar: any;
