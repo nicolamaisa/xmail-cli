@@ -237,6 +237,16 @@ export function createDashboard(screen, colors) {
         tags: true,
         style: { bg: '#111111', fg: '#C0C0C0' }
     });
+    const logAreaSuggestionText = blessed.text({
+        parent: logAreaSuggestion,
+        top: 1,
+        left: 1,
+        right: 1,
+        height: 1,
+        tags: true,
+        content: 'xconfig --help for configuration options',
+        style: { bg: '#111111', fg: '#888888' }
+    });
     const separatorLine = blessed.line({
         parent: logAreaSuggestion,
         bottom: 1,
@@ -313,6 +323,7 @@ export function createDashboard(screen, colors) {
         dashInputAccentLine,
         logArea,
         logAreaSuggestion,
+        logAreaSuggestionText,
         bottomInfo,
         keyInfo,
         dashSuggestions,

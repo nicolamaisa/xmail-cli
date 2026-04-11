@@ -8,6 +8,7 @@ import { createDashboard } from './ui/dashboard.js';
 import { layoutDashboard } from './lib/layout.js';
 import { createLogStore } from './lib/log-store.js';
 import { createPromptStore } from './lib/prompt-store.js';
+import { createFlowStore } from './lib/flow-store.js';
 import { fetchStatusPanelState, renderStatusPanelLines } from './lib/status-panel.js';
 import { getCommandSplashSuggestions, getCommandSuggestions } from './lib/suggestions.js';
 import { refreshDashInputUI, refreshSplashInputUI } from './lib/refresh.js';
@@ -40,7 +41,7 @@ patchBlessedTextboxEnter();
 /** @returns {boolean} */
 function checkProjectStatus() {
     try {
-        const stdout = execSync('docker ps --filter "name=x-" --format "{{.Names}}"').toString();
+        const stdout = execSync('docker ps --filter "name=xmail-" --format "{{.Names}}"').toString();
         return stdout.trim().length > 0;
     } catch {
         return false;
@@ -70,6 +71,7 @@ function createCommandContext() {
         dashInput: dashboard.dashInput,
         logs,
         prompts,
+        flow,
         state: {},
         /** @param {string} message */
         log: (message) => logs.logText(message),
@@ -120,6 +122,33 @@ const prompts = createPromptStore(logs, {
         dashboard.dashInput.style.fg = 'white';
         focusDashboardInput();
         refreshDashInputUI(dashUi, colors);
+    },
+    /** @param {string} content */
+    onInstructionsChange(content) {
+        dashboard.logAreaSuggestionText.setContent(content);
+        screen.render();
+    }
+});
+
+const flow = createFlowStore(logs, {
+    onOpen() {
+        promptMode = true;
+        commandInputLocked = true;
+        dashboard.dashInput.clearValue();
+        dashboard.dashInput.blur();
+        dashboard.logArea.focus();
+        refreshDashInputUI(dashUi, colors);
+    },
+    onClose() {
+        promptMode = false;
+        commandInputLocked = false;
+        focusDashboardInput();
+        refreshDashInputUI(dashUi, colors);
+    },
+    /** @param {string} content */
+    onInstructionsChange(content) {
+        dashboard.logAreaSuggestionText.setContent(content);
+        screen.render();
     }
 });
 
@@ -218,6 +247,9 @@ function dispatchCommand(input) {
                 args
             })
         ).catch((error) => {
+            if (error && typeof error === 'object' && error.handled) {
+                return;
+            }
             const message = error instanceof Error ? error.message : String(error);
             logs.logText(`${chalk.red('✖')} ${message}`);
         });
@@ -328,7 +360,7 @@ refreshDashInputUI(dashUi, colors);
 
 bindRefreshOnInput(splash.inputSplashBar, () => refreshSplashInputUI(splashUi, colors));
 
-splash.inputSplashBar.on('submit', /** @param {string} value */ (value) => {
+splash.inputSplashBar.on('submit', /** @param {string} value */(value) => {
     const cmd = value.trim().toLowerCase();
 
     if (cmd === '/exit') {
@@ -428,7 +460,18 @@ screen.key(['C-l'], () => {
         clearDashboardLog();
     }
 });
-screen.on('keypress', /** @param {string} ch @param {any} key */ (ch, key) => {
+screen.on('keypress', /** @param {string} ch @param {any} key */(ch, key) => {
+    if (flow.isActive()) {
+        const handled = flow.handleKeypress(ch, key);
+        if (handled) {
+            dashboard.dashInput.clearValue();
+            blurDashboardInput();
+            refreshDashInputUI(dashUi, colors);
+            screen.render();
+        }
+        return;
+    }
+
     if (!prompts.isActive()) {
         handleDashboardInputKeypress(ch, key);
         return;
@@ -453,10 +496,6 @@ screen.on('resize', () => {
     }
 });
 
-logs.logText(
-    `${chalk.hex(colors.logo)('▶')} Terminale pronto. Digita ${chalk.cyan('/frontend')} o ${chalk.cyan('/help')}`
-);
-logs.logText(`${chalk.hex(colors.logo)('▶')} Sistema pronto. ${chalk.dim('Ctrl+C per uscire')}`);
 void refreshStatusPanelData();
 setInterval(() => {
     statusPulseFrame = (statusPulseFrame + 1) % 2;

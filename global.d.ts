@@ -14,6 +14,7 @@ type AppContext = {
   dashInput: any;
   logs: LogStore;
   prompts: PromptStore;
+  flow: FlowStore;
   state: Record<string, unknown>;
   log: (message: string) => void;
   quit: () => void;
@@ -61,12 +62,22 @@ type LogStore = {
   createLiveLine: (content?: string) => LiveLogLine;
   startProcessLog: (
     title: string,
-    options?: { maxVisibleLines?: number; footer?: string },
+    options?: {
+      maxVisibleLines?: number;
+      footer?: string;
+      variant?: "footer" | "compact";
+      selfClosing?: boolean;
+    },
   ) => string;
   appendProcessLog: (id: string, line: string) => void;
-  finishProcessLog: (id: string, footer?: string) => void;
+  finishProcessLog: (
+    id: string,
+    footer?: string,
+    status?: "success" | "error",
+  ) => void;
   setPromptBlock: (lines: string[]) => void;
   clearPromptBlock: () => void;
+  getPromptWidth: () => number;
   getPlainText: () => string;
 };
 
@@ -115,6 +126,55 @@ type PromptStore = {
     mode?: "single" | "history";
   }) => Promise<PromptResult | null>;
   close: () => void;
+  handleKeypress: (
+    ch?: string,
+    key?: {
+      name?: string;
+      full?: string;
+      sequence?: string;
+      ctrl?: boolean;
+      meta?: boolean;
+      shift?: boolean;
+    },
+  ) => boolean;
+};
+
+type FlowStore = {
+  isActive: () => boolean;
+  begin: (title: string) => void;
+  addInfo: (title: string, content: string) => void;
+  askInfo: (definition: {
+    title: string;
+    content: string;
+    instructions?: string;
+  }) => Promise<boolean | null>;
+  askSelect: (definition: {
+    title?: string;
+    label: string;
+    options: PromptChoice[];
+    value?: string;
+  }) => Promise<string | null>;
+  askMultiSelect: (definition: {
+    title?: string;
+    label: string;
+    options: PromptChoice[];
+    value?: string[];
+  }) => Promise<string[] | null>;
+  startProcess: (
+    title: string,
+    options?: {
+      maxVisibleLines?: number;
+      footer?: string;
+      selfClosing?: boolean;
+    },
+  ) => string;
+  appendProcess: (id: string, line: string) => void;
+  finishProcess: (
+    id: string,
+    status?: "success" | "error",
+    footer?: string,
+  ) => void;
+  complete: (persist?: boolean, completionLabel?: string) => void;
   handleKeypress: (
     ch?: string,
     key?: {

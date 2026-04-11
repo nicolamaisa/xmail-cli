@@ -222,6 +222,7 @@ export async function runInit(ctx) {
         resetDb: bootstrapOptions.includes('reset-db'),
         runMigrations: bootstrapOptions.includes('migrations'),
         devMode: bootstrapOptions.includes('dev-mode'),
+        includeSetupProfile: true,
         showStatusAfter: true
     });
 
