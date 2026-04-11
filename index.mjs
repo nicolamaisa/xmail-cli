@@ -9,6 +9,7 @@ import { layoutDashboard } from './lib/layout.js';
 import { createLogStore } from './lib/log-store.js';
 import { createPromptStore } from './lib/prompt-store.js';
 import { createFlowStore } from './lib/flow-store.js';
+import { createAppStateStore } from './lib/app-state-store.js';
 import { fetchStatusPanelState, renderStatusPanelLines } from './lib/status-panel.js';
 import { getCommandSplashSuggestions, getCommandSuggestions } from './lib/suggestions.js';
 import { refreshDashInputUI, refreshSplashInputUI } from './lib/refresh.js';
@@ -72,7 +73,8 @@ function createCommandContext() {
         logs,
         prompts,
         flow,
-        state: {},
+        state: appState.getState(),
+        appState,
         /** @param {string} message */
         log: (message) => logs.logText(message),
         quit: () => process.exit(0)
@@ -93,8 +95,13 @@ const dashUi = {
 };
 
 const logs = createLogStore(dashboard.logArea, screen);
+const appState = createAppStateStore();
 let promptMode = false;
 let commandInputLocked = false;
+/** @type {string[]} */
+const commandHistory = [];
+let commandHistoryCursor = -1;
+let commandHistoryDraft = '';
 
 /** @param {any} widget */
 function stopTextboxInput(widget) {
@@ -267,6 +274,12 @@ function runDashboardCommand(value) {
     }
 
     const input = value.trim().toLowerCase();
+    if (input !== '') {
+        commandHistory.push(input);
+    }
+    commandHistoryCursor = -1;
+    commandHistoryDraft = '';
+
     void dispatchCommand(input).finally(() => {
         if (!promptMode && !commandInputLocked) {
             focusDashboardInput();
@@ -322,8 +335,52 @@ function handleDashboardInputKeypress(ch, key = {}) {
         return true;
     }
 
+    if (key.name === 'up') {
+        if (commandHistory.length === 0) {
+            return true;
+        }
+
+        if (commandHistoryCursor === -1) {
+            commandHistoryDraft = dashboard.dashInput.getValue() || '';
+            commandHistoryCursor = commandHistory.length - 1;
+        } else {
+            commandHistoryCursor = Math.max(0, commandHistoryCursor - 1);
+        }
+
+        dashboard.dashInput.setValue(commandHistory[commandHistoryCursor] || '');
+        dashboard.dashInput.cursorVisible = true;
+        refreshDashInputUI(dashUi, colors);
+        screen.render();
+        return true;
+    }
+
+    if (key.name === 'down') {
+        if (commandHistory.length === 0) {
+            return true;
+        }
+
+        if (commandHistoryCursor === -1) {
+            return true;
+        }
+
+        if (commandHistoryCursor < commandHistory.length - 1) {
+            commandHistoryCursor += 1;
+            dashboard.dashInput.setValue(commandHistory[commandHistoryCursor] || '');
+        } else {
+            commandHistoryCursor = -1;
+            dashboard.dashInput.setValue(commandHistoryDraft);
+        }
+
+        dashboard.dashInput.cursorVisible = true;
+        refreshDashInputUI(dashUi, colors);
+        screen.render();
+        return true;
+    }
+
     if (key.name === 'escape') {
         dashboard.dashInput.clearValue();
+        commandHistoryCursor = -1;
+        commandHistoryDraft = '';
         dashboard.dashInput.cursorVisible = true;
         refreshDashInputUI(dashUi, colors);
         screen.render();

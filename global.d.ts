@@ -15,9 +15,30 @@ type AppContext = {
   logs: LogStore;
   prompts: PromptStore;
   flow: FlowStore;
+  appState: AppStateStore;
   state: Record<string, unknown>;
   log: (message: string) => void;
   quit: () => void;
+};
+
+type AppState = {
+  api: {
+    baseUrl: string;
+    accessToken: string | null;
+    refreshToken: string | null;
+    email: string | null;
+    user: unknown;
+    lastLoginAt: string | null;
+  };
+  checks: Record<string, unknown>;
+};
+
+type AppStateStore = {
+  getState: () => AppState;
+  getApiSession: () => AppState["api"];
+  setApiSession: (session: Partial<AppState["api"]>) => void;
+  clearApiSession: () => void;
+  setCheck: (key: string, value: unknown) => void;
 };
 
 type CommandInvocation = {
@@ -143,23 +164,84 @@ type FlowStore = {
   isActive: () => boolean;
   begin: (title: string) => void;
   addInfo: (title: string, content: string) => void;
+  addReview: (
+    title: string,
+    items: Array<{ label: string; value: string }>,
+  ) => void;
+  addNotice: (content: string) => void;
   askInfo: (definition: {
     title: string;
     content: string;
     instructions?: string;
   }) => Promise<boolean | null>;
   askSelect: (definition: {
+    id?: string;
     title?: string;
     label: string;
     options: PromptChoice[];
     value?: string;
+    instructions?: string;
   }) => Promise<string | null>;
   askMultiSelect: (definition: {
+    id?: string;
     title?: string;
     label: string;
     options: PromptChoice[];
     value?: string[];
+    instructions?: string;
   }) => Promise<string[] | null>;
+  askConfirm: (definition: {
+    id?: string;
+    title?: string;
+    label: string;
+    value?: boolean;
+    trueLabel?: string;
+    falseLabel?: string;
+    instructions?: string;
+  }) => Promise<boolean | null>;
+  askText: (definition: {
+    id?: string;
+    title?: string;
+    label: string;
+    placeholder?: string;
+    value?: string;
+    required?: boolean;
+    instructions?: string;
+    validate?: (value: string) => string | null;
+  }) => Promise<string | null>;
+  askPassword: (definition: {
+    id?: string;
+    title?: string;
+    label: string;
+    placeholder?: string;
+    value?: string;
+    required?: boolean;
+    instructions?: string;
+    validate?: (value: string) => string | null;
+  }) => Promise<string | null>;
+  askNumber: (definition: {
+    id?: string;
+    title?: string;
+    label: string;
+    placeholder?: string;
+    value?: number;
+    required?: boolean;
+    instructions?: string;
+    integer?: boolean;
+    min?: number;
+    max?: number;
+    validate?: (value: number) => string | null;
+  }) => Promise<number | null>;
+  askUrl: (definition: {
+    id?: string;
+    title?: string;
+    label: string;
+    placeholder?: string;
+    value?: string;
+    required?: boolean;
+    instructions?: string;
+    validate?: (value: string) => string | null;
+  }) => Promise<string | null>;
   startProcess: (
     title: string,
     options?: {
@@ -174,7 +256,32 @@ type FlowStore = {
     status?: "success" | "error",
     footer?: string,
   ) => void;
-  complete: (persist?: boolean, completionLabel?: string) => void;
+  runProcessStep: (
+    title: string,
+    worker: (helpers: {
+      append: (line: string) => void;
+      finish: (status?: "success" | "error", footer?: string) => void;
+    }) => Promise<
+      | void
+      | {
+          handled?: boolean;
+          status?: "success" | "error";
+          footer?: string;
+          value?: unknown;
+        }
+    >,
+    processOptions?: {
+      maxVisibleLines?: number;
+      footer?: string;
+      selfClosing?: boolean;
+    },
+  ) => Promise<unknown>;
+  getState: () => Record<string, unknown>;
+  complete: (
+    persist?: boolean,
+    completionLabel?: string,
+    options?: { hideCompletion?: boolean },
+  ) => void;
   handleKeypress: (
     ch?: string,
     key?: {

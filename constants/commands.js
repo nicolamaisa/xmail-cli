@@ -15,5 +15,7 @@ export const COMMANDS = [
     { id: '/clear', description: 'Pulisci lo schermo' },
     { id: '/test', description: 'Esegui test' },
     { id: '/wizard', description: 'Avvia la procedura guidata di configurazione' },
-    { id: '/export-log', description: 'Esporta il log corrente in un file di supporto' }
+    { id: '/export-log', description: 'Esporta il log corrente in un file di supporto' },
+    { id: '/login', description: 'Autentica la TUI verso servizi esterni, ad esempio /login api' },
+    { id: '/logout', description: 'Esegue logout dai servizi esterni, ad esempio /logout api' }
 ];

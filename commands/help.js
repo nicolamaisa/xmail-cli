@@ -15,6 +15,8 @@ export function runHelp(ctx) {
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/reset-db')} - Reset dei dati PostgreSQL locali`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/frontend')} - Avvia il task di compilazione frontend`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/wizard')} - Avvia la configurazione iniziale guidata`);
+    ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/login api')} - Esegue il login verso l'API XMail e salva il token in memoria`);
+    ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/logout api')} - Esegue il logout dall'API XMail e rimuove il token dalla memoria`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/export-log')} - Salva il log per supporto/debug`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/clear')} - Pulisce la console`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/exit')} o ${chalk.cyan('/quit')} - Esci dall'applicazione`);

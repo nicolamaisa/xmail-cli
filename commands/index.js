@@ -5,6 +5,7 @@ import { runFrontend } from './frontend.js';
 import { runExit } from './exit.js';
 import { runWizard } from './wizard.js';
 import { runExportLog } from './export-log.js';
+import { runLogin } from './login.js';
 import { runInit } from './init.js';
 import { runStart } from './start.js';
 import { runStop } from './stop.js';
@@ -14,6 +15,7 @@ import { runMigrate } from './migrate.js';
 import { runStatus } from './status.js';
 import { runLogs } from './logs.js';
 import { runResetDb } from './reset-db.js';
+import { runLogout } from './logout.js';
 
 /** @type {Record<string, CommandHandler>} */
 export const commandRegistry = {
@@ -32,6 +34,8 @@ export const commandRegistry = {
     '/reset-db': runResetDb,
     '/wizard': runWizard,
     '/export-log': runExportLog,
+    '/login': runLogin,
     '/exit': runExit,
     '/quit': runExit,
+    '/logout': runLogout
 };
