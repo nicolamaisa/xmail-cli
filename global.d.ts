@@ -163,7 +163,11 @@ type PromptStore = {
 type FlowStore = {
   isActive: () => boolean;
   begin: (title: string) => void;
-  addInfo: (title: string, content: string) => void;
+  addInfo: (
+    title: string,
+    content: string,
+    options?: { tone?: "info" | "warning" | "error" | "success" },
+  ) => void;
   addReview: (
     title: string,
     items: Array<{ label: string; value: string }>,

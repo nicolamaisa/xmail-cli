@@ -5,6 +5,7 @@ import {
     generateJwtKeys,
     writeXmailEnv
 } from '../lib/xmail-control.js';
+import { runInitFromFlowFile } from '../lib/init-engine.js';
 
 /**
  * @param {ReturnType<typeof discoverXmailState> extends Promise<infer T> ? T : never} state
@@ -27,6 +28,11 @@ function buildDiscoverySummary(state) {
 
 /** @param {AppContext} ctx */
 export async function runInit(ctx) {
+    const handledByEngine = await runInitFromFlowFile(ctx);
+    if (handledByEngine) {
+        return;
+    }
+
     const state = await discoverXmailState();
     const current = state.currentValues;
 

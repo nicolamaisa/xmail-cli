@@ -482,6 +482,14 @@ const quit = () => process.exit(0);
 
 dashboard.inputContainer.on('click', focusDashboardInput);
 dashboard.logArea.on('click', blurDashboardInput);
+dashboard.logArea.on('wheelup', () => {
+    dashboard.logArea.scroll(-3);
+    screen.render();
+});
+dashboard.logArea.on('wheeldown', () => {
+    dashboard.logArea.scroll(3);
+    screen.render();
+});
 dashboard.statusPanel.on('click', () => {
     blurDashboardInput();
     dashboard.statusPanel.focus();

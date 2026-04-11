@@ -6,7 +6,7 @@ export const COMMANDS = [
     { id: '/frontend', description: 'Avvia il frontend' },
     { id: '/start', description: 'Avvia la stack XMail' },
     { id: '/stop', description: 'Ferma i container attivi' },
-    { id: '/down', description: 'Esegue docker compose down' },
+    { id: '/down', description: 'Esegue compose down o rimuove un singolo container (/down x-auth)' },
     { id: '/restart', description: 'Riavvia la stack' },
     { id: '/migrate', description: 'Esegue solo le migrazioni del database' },
     { id: '/status', description: 'Mostra lo stato docker compose' },

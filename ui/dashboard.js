@@ -213,7 +213,7 @@ export function createDashboard(screen, colors) {
         height: '100%-19', // Spazio per header (10) e input (3)
         tags: true,
         keys: true,
-        mouse: false,
+        mouse: true,
         padding: { top: 1, right: 1, bottom: 1, left: 1 },
         scrollable: true,
         style: {

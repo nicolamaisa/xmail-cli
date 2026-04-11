@@ -6,7 +6,8 @@ export function runHelp(ctx) {
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/init')} - Onboarding e bootstrap completo di XMail`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/start')} - Avvia la stack XMail`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/stop')} - Ferma i container attivi`);
-    ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/down')} - Esegue docker compose down`);
+    ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/down')} - Esegue docker compose down (con opzioni volumi/orphans)`);
+    ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/down x-auth')} - Rimuove un singolo container`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/restart')} - Riavvia i container`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/migrate')} - Esegue le migrazioni DB`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/status')} - Mostra docker compose ps`);
