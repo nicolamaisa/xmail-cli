@@ -13,6 +13,8 @@ export function runHelp(ctx) {
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/status')} - Mostra docker compose ps`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/logs')} - Mostra gli ultimi log compose`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/logs x-license')} - Mostra gli ultimi log di un container specifico`);
+    ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/logs watch [container]')} - Avvia stream live log in un process block`);
+    ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/logs stop')} - Ferma lo stream live log attivo`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/reset-db')} - Reset dei dati PostgreSQL locali`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/frontend')} - Avvia il task di compilazione frontend`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/wizard')} - Avvia la configurazione iniziale guidata`);
