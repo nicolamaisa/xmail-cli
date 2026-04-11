@@ -205,6 +205,7 @@ function startLogWatch(ctx, containerName) {
 
     const processId = ctx.logs.startProcessLog(title, {
         maxVisibleLines: 10,
+        maxBufferedLines: 300,
         footer: '{yellow-fg}watching...{/yellow-fg}',
         selfClosing: false,
     });
@@ -293,9 +294,22 @@ function startLogWatch(ctx, containerName) {
  */
 export async function runLogs(ctx, command = {}) {
     const args = command.args || [];
+    const wantsHelp = args.includes('help') || args.includes('-h') || args.includes('--help');
     const wantsWatch = args.includes('watch');
     const wantsStop = args.includes('stop');
     const query = args.filter((arg) => arg !== 'watch' && arg !== 'stop').join(' ').trim();
+
+    if (wantsHelp) {
+        ctx.log(`${chalk.magenta('┌──')} ${chalk.bold('Logs Help')}`);
+        ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/logs')} - Mostra gli ultimi log docker compose`);
+        ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/logs <container>')} - Mostra gli ultimi log di un container`);
+        ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/logs watch')} - Avvia stream live compose logs`);
+        ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/logs watch <container>')} - Avvia stream live di un container`);
+        ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/logs stop')} - Ferma il watch attivo`);
+        ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/logs -h')} / ${chalk.cyan('/logs help')} - Mostra questo aiuto`);
+        ctx.log(`${chalk.magenta('└──')} ${chalk.dim('Tip: puoi anche usare /help logs')}`);
+        return;
+    }
 
     if (wantsStop) {
         const stopped = stopActiveLogWatch(ctx, 'Watch stopped');

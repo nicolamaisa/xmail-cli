@@ -247,6 +247,21 @@ function dispatchCommand(input) {
     const handler = commandRegistry[cmd];
 
     if (handler) {
+        const wantsInlineHelp = cmd !== '/help' && args.some((arg) => {
+            const value = arg.toLowerCase();
+            return value === '-h' || value === '--help' || value === 'help';
+        });
+
+        if (wantsInlineHelp && commandRegistry['/help']) {
+            return Promise.resolve(
+                commandRegistry['/help'](createCommandContext(), {
+                    raw: `/help ${cmd.replace(/^\//, '')}`,
+                    command: '/help',
+                    args: [cmd.replace(/^\//, '')]
+                })
+            );
+        }
+
         return Promise.resolve(
             handler(createCommandContext(), {
                 raw: trimmed,

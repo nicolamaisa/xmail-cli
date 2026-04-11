@@ -85,6 +85,7 @@ type LogStore = {
     title: string,
     options?: {
       maxVisibleLines?: number;
+      maxBufferedLines?: number;
       footer?: string;
       variant?: "footer" | "compact";
       selfClosing?: boolean;
