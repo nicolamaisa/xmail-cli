@@ -16,6 +16,7 @@ import { runStatus } from './status.js';
 import { runLogs } from './logs.js';
 import { runResetDb } from './reset-db.js';
 import { runLogout } from './logout.js';
+import { runDownload } from './download.js';
 
 /** @type {Record<string, CommandHandler>} */
 export const commandRegistry = {
@@ -31,6 +32,7 @@ export const commandRegistry = {
     '/migrate': runMigrate,
     '/status': runStatus,
     '/logs': runLogs,
+    '/download': runDownload,
     '/reset-db': runResetDb,
     '/wizard': runWizard,
     '/export-log': runExportLog,

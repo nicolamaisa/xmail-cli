@@ -54,6 +54,17 @@ export function runHelp(ctx, invocation = {}) {
         return;
     }
 
+    if (topic === 'download') {
+        renderHelpBlock(ctx, 'Help: /download', [
+            `${chalk.cyan('/download')} - Flow guidato download release da x-master-distribution`,
+            `Esegue check release via ${chalk.cyan('curl')}, scelta release, conferma download, verifica SHA256`,
+            `A checksum valida chiede conferma estrazione in ${chalk.cyan('/opt/xmail-prod')}`,
+            `${chalk.cyan('/download beta')} - Avvia con canale predefinito beta`,
+            `${chalk.cyan('/download -h')} - Mostra questo aiuto`,
+        ], 'Tip: dopo estrazione esegui /init');
+        return;
+    }
+
     if (topic === 'start' || topic === 'stop' || topic === 'restart') {
         renderHelpBlock(ctx, `Help: /${topic}`, [
             `${chalk.cyan('/start')} - Avvia stack XMail`,
@@ -100,6 +111,7 @@ export function runHelp(ctx, invocation = {}) {
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/migrate')} - Esegue le migrazioni DB`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/status')} - Mostra docker compose ps`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/logs')} * - Log recenti e stream live`);
+    ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/download')} * - Scarica release, verifica SHA ed estrae pacchetto`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/reset-db')} * - Reset dei dati PostgreSQL locali`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/login')} * - Login verso servizi esterni`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/logout')} * - Logout servizi esterni`);

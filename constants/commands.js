@@ -11,6 +11,7 @@ export const COMMANDS = [
     { id: '/migrate', description: 'Esegue solo le migrazioni del database' },
     { id: '/status', description: 'Mostra lo stato docker compose' },
     { id: '/logs', description: 'Mostra log recenti, o stream live con /logs watch e stop con /logs stop' },
+    { id: '/download', description: 'Scarica una release da x-master-distribution, verifica SHA256 e opzionalmente estrae in /opt/xmail-prod' },
     { id: '/reset-db', description: 'Resetta i dati PostgreSQL locali' },
     { id: '/clear', description: 'Pulisci lo schermo' },
     { id: '/test', description: 'Esegui test' },
