@@ -2,12 +2,12 @@
   "name": "mia-tui",
   "version": "1.0.0",
   "description": "",
-  "bin": "dist/bundle.js",
-  "main": "dist/bundle.js",
+  "bin": "entry.cjs",
+  "main": "entry.cjs",
   "type": "module",
   "scripts": {
-    "build": "esbuild index.mjs --bundle --platform=node --outfile=dist/bundle.js --external:neo-blessed --external:blessed --external:term.js --external:pty.js --external:blessed/lib/colors",
-    "package": "pkg . --targets node18-linux-x64 --output xmail-linux",
+    "build": "esbuild index.mjs --bundle --platform=node --outfile=dist/bundle.js --external:@pm2/blessed --external:blessed --external:term.js --external:pty.js --external:blessed/lib/colors",
+    "package": "npm run build && pkg . --targets node24-linux-x64 --output xmail-linux",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "pkg": {
@@ -15,7 +15,8 @@
       "node_modules/@pm2/blessed/**/*"
     ],
     "scripts": [
-      "node_modules/@pm2/blessed/lib/widgets/*.js"
+      "node_modules/@pm2/blessed/lib/**/*.js",
+      "node_modules/@pm2/blessed/vendor/**/*.js"
     ],
     "options": [
       "--no-bytecode"
@@ -26,7 +27,10 @@
     "@pm2/blessed": "^0.1.81",
     "chalk": "^4.1.2",
     "execa": "^5.1.1",
-    "picocolors": "^1.1.1"
+    "picocolors": "^1.1.1",
+    "term.js": "file:stubs/term.js",
+    "pty.js": "file:stubs/pty.js",
+    "blessed": "file:stubs/blessed"
   },
   "devDependencies": {
     "@types/blessed": "^0.1.27",
