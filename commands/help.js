@@ -65,6 +65,20 @@ export function runHelp(ctx, invocation = {}) {
         return;
     }
 
+    if (topic === 'update') {
+        renderHelpBlock(ctx, 'Help: /update', [
+            `${chalk.cyan('/update')} - Check release disponibili e applica update guidato`,
+            `Flusso: check release -> scelta versione -> download -> verifica SHA256 -> apply safe`,
+            `Apply safe usa sync a checksum: i file invariati non vengono toccati`,
+            `Runtime update: ${chalk.cyan('stop')} -> ${chalk.cyan('pull')} -> ${chalk.cyan('up core')} -> ${chalk.cyan('migrate opzionale')} -> ${chalk.cyan('up finale')}`,
+            `${chalk.cyan('.env')} viene aggiornato solo se cambia ${chalk.cyan('.env.example')} (aggiunge solo chiavi mancanti)`,
+            `${chalk.cyan('/update stable')} - Avvia con canale predefinito stable`,
+            `${chalk.cyan('/update -d')} / ${chalk.cyan('/update --dry-run')} - Simula update senza modifiche`,
+            `${chalk.cyan('/update -h')} - Mostra questo aiuto`,
+        ], 'Tip: dopo update usa /restart per riallineare i servizi');
+        return;
+    }
+
     if (topic === 'start' || topic === 'stop' || topic === 'restart') {
         renderHelpBlock(ctx, `Help: /${topic}`, [
             `${chalk.cyan('/start')} - Avvia stack XMail`,
@@ -112,6 +126,7 @@ export function runHelp(ctx, invocation = {}) {
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/status')} - Mostra docker compose ps`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/logs')} * - Log recenti e stream live`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/download')} * - Scarica release, verifica SHA ed estrae pacchetto`);
+    ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/update')} * - Aggiorna release con apply safe e sync env condizionale`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/reset-db')} * - Reset dei dati PostgreSQL locali`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/login')} * - Login verso servizi esterni`);
     ctx.log(`${chalk.magenta('│')} ${chalk.cyan('/logout')} * - Logout servizi esterni`);

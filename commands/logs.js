@@ -169,6 +169,34 @@ function splitNonEmptyLines(text) {
 
 /**
  * @param {AppContext} ctx
+ * @returns {number}
+ */
+function getFramedLogWidth(ctx) {
+    const rawWidth = typeof ctx.logArea?.width === 'number'
+        ? ctx.logArea.width
+        : Number.parseInt(String(ctx.logArea?.width || ''), 10);
+    const safeWidth = Number.isFinite(rawWidth) ? rawWidth : 100;
+    return Math.max(30, safeWidth - 8);
+}
+
+/**
+ * @param {AppContext} ctx
+ * @param {string} prefix
+ * @param {string} text
+ * @param {(line: string) => string} [paint]
+ */
+function logWrappedRows(ctx, prefix, text, paint = (line) => line) {
+    const width = getFramedLogWidth(ctx);
+    for (const rawLine of splitNonEmptyLines(text)) {
+        const chunks = wrapLine(rawLine, width);
+        for (const chunk of chunks) {
+            ctx.log(`${prefix} ${paint(chunk)}`);
+        }
+    }
+}
+
+/**
+ * @param {AppContext} ctx
  * @param {string} reason
  */
 function stopActiveLogWatch(ctx, reason = 'Stopped') {
@@ -365,11 +393,8 @@ export async function runLogs(ctx, command = {}) {
     }
 
     ctx.log(`${chalk.magenta('╔══')} ${chalk.bold(title)}`);
-    for (const line of splitNonEmptyLines(stdout)) {
-        ctx.log(`${chalk.magenta('║')} ${line}`);
-    }
-    for (const line of splitNonEmptyLines(stderr)) {
-        ctx.log(`${chalk.magenta('║')} ${chalk.red(line)}`);
-    }
+    const bar = chalk.magenta('║');
+    logWrappedRows(ctx, bar, stdout);
+    logWrappedRows(ctx, bar, stderr, (line) => chalk.red(line));
     ctx.log(`${chalk.magenta('╚══')} ${chalk.dim('End logs')}`);
 }

@@ -3,7 +3,6 @@ import { createReadStream } from "fs";
 import { promises as fs } from "fs";
 import path from "path";
 import { spawn } from "child_process";
-import chalk from "chalk";
 import { XMAIL_ROOT, captureCommand } from "../lib/xmail-control.js";
 
 /**
@@ -317,7 +316,47 @@ export async function runDownload(ctx, invocation = {}) {
     return;
   }
 
-  const downloadsDir = path.join(XMAIL_ROOT, ".downloads");
+  let installPath = XMAIL_ROOT;
+  const confirmDefaultInstallPath = await ctx.flow.askConfirm({
+    id: "confirm_install_path",
+    label: `Percorso installazione suggerito: ${installPath}. Vuoi usarlo?`,
+    trueLabel: "Usa suggerito",
+    falseLabel: "Cambia",
+    value: true,
+  });
+  if (confirmDefaultInstallPath === null) {
+    ctx.flow.addNotice("{yellow-fg}⚠ Download annullato{/yellow-fg}");
+    ctx.flow.complete(true, "Download cancelled", { hideCompletion: true });
+    return;
+  }
+
+  if (confirmDefaultInstallPath === false) {
+    const customInstallPath = await ctx.flow.askText({
+      id: "custom_install_path",
+      label: "Percorso installazione",
+      placeholder: "/opt/xmail-prod",
+      value: installPath,
+      required: true,
+      validate(value) {
+        const trimmed = value.trim();
+        if (!trimmed.startsWith("/")) {
+          return "Inserisci un path assoluto (es. /opt/xmail-prod).";
+        }
+        return null;
+      },
+    });
+
+    if (!customInstallPath) {
+      ctx.flow.addNotice("{yellow-fg}⚠ Download annullato{/yellow-fg}");
+      ctx.flow.complete(true, "Download cancelled", { hideCompletion: true });
+      return;
+    }
+
+    installPath = customInstallPath.trim();
+  }
+
+  const downloadsDir = path.join(installPath, ".downloads");
+
   await fs.mkdir(downloadsDir, { recursive: true });
   const archivePath = path.join(downloadsDir, `xmail.${chosenRelease.version}.tar.gz`);
 
@@ -374,7 +413,7 @@ export async function runDownload(ctx, invocation = {}) {
 
   const confirmExtract = await ctx.flow.askConfirm({
     id: "confirm_extract",
-    label: `SHA ok. Vuoi estrarre il pacchetto in ${XMAIL_ROOT}?`,
+    label: `SHA ok. Vuoi estrarre il pacchetto in ${installPath}?`,
     trueLabel: "Estrai",
     falseLabel: "No",
     value: true,
@@ -393,7 +432,7 @@ export async function runDownload(ctx, invocation = {}) {
       ctx,
       `Estrazione release ${chosenRelease.version}`,
       "tar",
-      ["-xzf", archivePath, "-C", XMAIL_ROOT],
+      ["-xzf", archivePath, "-C", installPath],
       { successFooter: "Pacchetto estratto con successo" }
     );
   } catch (error) {
@@ -408,8 +447,9 @@ export async function runDownload(ctx, invocation = {}) {
     [
       `Release ${chosenRelease.version} scaricata, verificata ed estratta.`,
       `Archivio: ${archivePath}`,
+      `Installazione: ${installPath}`,
       "",
-      `${chalk.green("Prossimo passo: esegui /init")}`,
+      "{green-fg}Prossimo passo: esegui /init{/green-fg}",
     ].join("\n"),
     { tone: "success" }
   );

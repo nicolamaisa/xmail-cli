@@ -1,5 +1,6 @@
 import blessed from '@pm2/blessed';
 import chalk from 'chalk';
+import { existsSync } from 'fs';
 import { execSync } from 'child_process';
 import { commandRegistry } from './commands/index.js';
 import { colors } from './constants/colors.js';
@@ -49,7 +50,37 @@ function checkProjectStatus() {
     }
 }
 
-const isInstalled = checkProjectStatus();
+/**
+ * @returns {{ phase: 'installed' | 'package-ready' | 'package-missing' }}
+ */
+function detectSplashState() {
+    const installed = checkProjectStatus();
+    const packageReady = existsSync('/opt/xmail-prod/docker-compose.yml');
+
+    if (installed) {
+        return { phase: 'installed' };
+    }
+
+    if (packageReady) {
+        return { phase: 'package-ready' };
+    }
+
+    return { phase: 'package-missing' };
+}
+
+const splashState = detectSplashState();
+
+/**
+ * @param {'installed' | 'package-ready' | 'package-missing'} phase
+ * @returns {string[]}
+ */
+function getAllowedSplashCommands(phase) {
+    if (phase === 'package-missing') {
+        return ['/help', '/download'];
+    }
+
+    return ['/help', '/init', '/download'];
+}
 
 const screen = blessed.screen({
     smartCSR: true,
@@ -81,7 +112,7 @@ function createCommandContext() {
     };
 }
 
-const splash = createSplash(screen, colors, isInstalled);
+const splash = createSplash(screen, colors, splashState);
 const dashboard = createDashboard(screen, colors);
 
 const splashUi = {
@@ -161,6 +192,8 @@ const flow = createFlowStore(logs, {
 
 let statusRefreshInFlight = false;
 let lastStatusPanelContent = '';
+let lastHeaderLicenseContent = '';
+let lastHeaderLicenseHintContent = '';
 let statusPulseFrame = 0;
 /** @type {Awaited<ReturnType<typeof fetchStatusPanelState>> | null} */
 let latestStatusState = null;
@@ -190,9 +223,48 @@ function renderStatusPanel() {
     }
 
     const nextContent = renderStatusPanelLines(latestStatusState, statusPulseFrame).join('\n');
-    if (nextContent !== lastStatusPanelContent) {
+    const nextHeaderLicenseContent = (() => {
+        const state = latestStatusState.license?.state || 'unknown';
+        const label = latestStatusState.license?.label || 'unknown';
+
+        if (state === 'healthy') {
+            const symbol = statusPulseFrame % 2 === 0 ? '◉' : '◎';
+            return `{green-fg}${symbol} License: ${label}{/green-fg}`;
+        }
+
+        if (state === 'started') {
+            return `{yellow-fg}◎ License: ${label}{/yellow-fg}`;
+        }
+
+        if (state === 'error') {
+            return `{red-fg}● License: ${label}{/red-fg}`;
+        }
+
+        return `{gray-fg}○ License: ${label}{/gray-fg}`;
+    })();
+    const nextHeaderLicenseHintContent = latestStatusState.license?.hint
+        ? `{gray-fg}${latestStatusState.license.hint}{/gray-fg}`
+        : '';
+
+    const statusChanged = nextContent !== lastStatusPanelContent;
+    const headerChanged = nextHeaderLicenseContent !== lastHeaderLicenseContent;
+    const headerHintChanged = nextHeaderLicenseHintContent !== lastHeaderLicenseHintContent;
+
+    if (statusChanged) {
         lastStatusPanelContent = nextContent;
         dashboard.statusPanel.setContent(nextContent);
+    }
+
+    if (headerChanged) {
+        lastHeaderLicenseContent = nextHeaderLicenseContent;
+        dashboard.headerLicenseStatus.setContent(nextHeaderLicenseContent);
+    }
+    if (headerHintChanged) {
+        lastHeaderLicenseHintContent = nextHeaderLicenseHintContent;
+        dashboard.headerLicenseHint.setContent(nextHeaderLicenseHintContent);
+    }
+
+    if (statusChanged || headerChanged || headerHintChanged) {
         screen.render();
     }
 }
@@ -205,7 +277,7 @@ async function refreshStatusPanelData() {
     statusRefreshInFlight = true;
 
     try {
-        latestStatusState = await fetchStatusPanelState();
+        latestStatusState = await fetchStatusPanelState(appState.getApiSession());
         renderStatusPanel();
     } finally {
         statusRefreshInFlight = false;
@@ -434,26 +506,38 @@ bindRefreshOnInput(splash.inputSplashBar, () => refreshSplashInputUI(splashUi, c
 
 splash.inputSplashBar.on('submit', /** @param {string} value */(value) => {
     const cmd = value.trim().toLowerCase();
+    const allowedSplashCommands = getAllowedSplashCommands(splashState.phase);
 
     if (cmd === '/exit') {
         process.exit(0);
     }
 
     if (cmd === '') {
-        if (isInstalled) {
+        if (splashState.phase === 'installed') {
             splash.inputSplashBar.clearValue();
             switchToDashboard();
         }
         return;
     }
 
-    if (cmd === '/init') {
+    if (!allowedSplashCommands.includes(cmd)) {
+        splash.inputSplashBar.clearValue();
+        splash.hintText.setContent(`Comando non valido in splash. Usa ${allowedSplashCommands.join(' / ')}`);
+        refreshSplashInputUI(splashUi, colors);
+        screen.render();
+        return;
+    }
+
+    if (cmd === '/init' || cmd === '/download') {
         splash.inputSplashBar.clearValue();
         commandInputLocked = true;
-        dashboard.hintDashText.setContent('Bootstrap in avvio...');
+        const loadingLabel = cmd === '/download'
+            ? 'Download in avvio...'
+            : 'Bootstrap in avvio...';
+        dashboard.hintDashText.setContent(loadingLabel);
         dashboard.dashInput.style.fg = '#666666';
         switchToDashboard({ focusInput: false });
-        void dispatchCommand('/init').finally(() => {
+        void dispatchCommand(cmd).finally(() => {
             if (!promptMode) {
                 commandInputLocked = false;
                 dashboard.hintDashText.setContent('Digita un comando... ');
@@ -481,7 +565,10 @@ splash.inputSplashBar.on('submit', /** @param {string} value */(value) => {
 
 splash.inputSplashBar.key(['tab'], () => {
     const value = splash.inputSplashBar.getValue() || '';
-    const suggestions = getCommandSplashSuggestions(value);
+    const suggestions = getCommandSplashSuggestions(
+        value,
+        getAllowedSplashCommands(splashState.phase)
+    );
 
     if (suggestions.length > 0) {
         splash.inputSplashBar.setValue(suggestions[0].id);

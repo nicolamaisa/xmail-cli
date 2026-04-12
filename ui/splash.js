@@ -2,8 +2,12 @@
 import blessed from '@pm2/blessed';
 import chalk from 'chalk';
 
-/** @param {any} screen @param {ColorPalette} colors @param {boolean} isInstalled */
-export function createSplash(screen, colors, isInstalled) {
+/**
+ * @param {any} screen
+ * @param {ColorPalette} colors
+ * @param {{ phase: 'installed' | 'package-ready' | 'package-missing' }} state
+ */
+export function createSplash(screen, colors, state) {
     // 1. Box principale del splash
     const splashPage = blessed.box({
         parent: screen,
@@ -18,6 +22,18 @@ export function createSplash(screen, colors, isInstalled) {
         `██       ◥ ◤       ██\n` +
         `█████████████████████`).trim();
     // 3. Box del logo con informazioni e input
+    const statusLine = state.phase === 'installed'
+        ? chalk.green('● SYSTEM READY')
+        : state.phase === 'package-ready'
+            ? chalk.yellow('◐ PACKAGE READY (NOT INSTALLED)')
+            : chalk.red('○ PACKAGE NOT DOWNLOADED');
+
+    const actionLine = state.phase === 'installed'
+        ? `${chalk.dim('Premi INVIO per entrare oppure digita ')}${chalk.cyan('/init')}`
+        : state.phase === 'package-ready'
+            ? `${chalk.dim('Digita ')}${chalk.cyan('/init')}${chalk.dim(' per bootstrap oppure ')}${chalk.cyan('/download')}${chalk.dim(' per aggiornare il pacchetto')}`
+            : `${chalk.dim('Digita ')}${chalk.cyan('/download')}${chalk.dim(' per scaricare il pacchetto, poi ')}${chalk.cyan('/init')}`;
+
     const splashLogo = blessed.box({
         parent: splashPage,
         top: 4,
@@ -27,8 +43,8 @@ export function createSplash(screen, colors, isInstalled) {
         align: 'center',
         content: `${chalk.hex(colors.logo).bold(cleanLogo)}\n\n` +
             `${chalk.white.bold('XMAIL CLI v1.0')}\n` +
-            `${isInstalled ? chalk.green('● SYSTEM READY') : chalk.red('○ SYSTEM NOT INSTALLED')}\n\n` +
-            `${isInstalled ? chalk.dim('Premi INVIO per entrare') : 'Digita ' + chalk.cyan('/init')}`,
+            `${statusLine}\n\n` +
+            `${actionLine}`,
         tags: true,
         style: { bg: '#1a1a1a' }
     });

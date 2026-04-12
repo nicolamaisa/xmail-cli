@@ -72,6 +72,8 @@ type DashboardUi = {
   dashInput: any;
   hintDashText: any;
   dashInputAccentLine: any;
+  headerLicenseStatus: any;
+  headerLicenseHint: any;
   dashSuggestionLines: any[];
   dashSuggestions: any;
   screen: any;

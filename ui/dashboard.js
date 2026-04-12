@@ -65,11 +65,34 @@ export function createDashboard(screen, colors) {
 
         content: `\n ${chalk.bold.hex(colors.logo)(' XMAIL Control Script')} ${chalk.dim('v0.0.1')}`,
         height: 10, // Aumentato per il logo
+        tags: true,
         style: {
             bg: colors.header
         }
     });
 
+    const headerLicenseStatus = blessed.text({
+        parent: header,
+        top: 3,
+        left: 1,
+        tags: true,
+        content: '{gray-fg}○ License: unknown{/gray-fg}',
+        style: {
+            fg: '#aaaaaa',
+            bg: colors.header
+        }
+    });
+    const headerLicenseHint = blessed.text({
+        parent: header,
+        top: 4,
+        left: 1,
+        tags: true,
+        content: '',
+        style: {
+            fg: '#777777',
+            bg: colors.header
+        }
+    });
 
 
     // 3. Input Bar (In fondo)
@@ -244,7 +267,7 @@ export function createDashboard(screen, colors) {
         right: 1,
         height: 1,
         tags: true,
-        content: 'xconfig --help for configuration options',
+        content: '',
         style: { bg: '#111111', fg: '#888888' }
     });
     const separatorLine = blessed.line({
@@ -315,6 +338,8 @@ export function createDashboard(screen, colors) {
         logoContainer,
         logo,
         header,
+        headerLicenseStatus,
+        headerLicenseHint,
         sideInfo,
         statusPanel,
         inputContainer,
